@@ -134,8 +134,9 @@ jobs:
       - name: Build iOS iPA
         run: |
           flutter build ios --release --no-codesign
-          ln -sf ./build/ios/iphoneos Payload
-          zip -r9 Spotube-iOS.ipa Payload/release.app
+          mkdir -p Payload
+          ln -s "$PWD/build/ios/iphoneos/Runner.app" Payload/
+          zip -r9 Spotube-iOS.ipa Payload
 
       - uses: actions/upload-artifact@v3
         with:
