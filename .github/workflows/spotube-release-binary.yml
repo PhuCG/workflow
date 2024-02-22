@@ -11,11 +11,11 @@ on:
         description: Release Channel
         required: true
         options:
-          - stable
-          - nightly
-        default: nightly
+          - debug
+          - relaese
+        default: relaese
       debug:
-        description: Debug on failed when channel is nightly
+        description: Debug on failed when channel is relaese
         required: true
         type: boolean
         default: false
@@ -40,26 +40,26 @@ jobs:
           cache: true
           flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (nightly)
-        if: ${{ inputs.channel == 'nightly' }}
+      - name: Replace pubspec version and BUILD_VERSION Env (relaese)
+        if: ${{ inputs.channel == 'relaese' }}
         run: |
           brew install yq
           yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
           yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
           echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
 
-      - name: BUILD_VERSION Env (stable)
-        if: ${{ inputs.channel == 'stable' }}
+      - name: BUILD_VERSION Env (debug)
+        if: ${{ inputs.channel == 'debug' }}
         run: |
           echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
-      - name: Create Stable .env
-        if: ${{ inputs.channel == 'stable' }}
+      - name: Create debug .env
+        if: ${{ inputs.channel == 'debug' }}
         run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create Nightly .env
-        if: ${{ inputs.channel == 'nightly' }}
-        run: echo '${{ secrets.DOTENV_NIGHTLY }}' > .env
+      - name: Create relaese .env
+        if: ${{ inputs.channel == 'relaese' }}
+        run: echo '${{ secrets.DOTENV_relaese }}' > .env
 
       - name: Generate Secrets
         run: |
@@ -91,7 +91,7 @@ jobs:
             build/Spotube-macos-universal.pkg
 
       - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'nightly' }}
+        if: ${{ failure() && inputs.debug && inputs.channel == 'relaese' }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
@@ -105,26 +105,26 @@ jobs:
           cache: true
           flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (nightly)
-        if: ${{ inputs.channel == 'nightly' }}
+      - name: Replace pubspec version and BUILD_VERSION Env (relaese)
+        if: ${{ inputs.channel == 'relaese' }}
         run: |
           brew install yq
           yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
           yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
           echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
 
-      - name: BUILD_VERSION Env (stable)
-        if: ${{ inputs.channel == 'stable' }}
+      - name: BUILD_VERSION Env (debug)
+        if: ${{ inputs.channel == 'debug' }}
         run: |
           echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
-      - name: Create Stable .env
-        if: ${{ inputs.channel == 'stable' }}
+      - name: Create debug .env
+        if: ${{ inputs.channel == 'debug' }}
         run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create Nightly .env
-        if: ${{ inputs.channel == 'nightly' }}
-        run: echo '${{ secrets.DOTENV_NIGHTLY }}' > .env
+      - name: Create relaese .env
+        if: ${{ inputs.channel == 'relaese' }}
+        run: echo '${{ secrets.DOTENV_relaese }}' > .env
 
       - name: Generate Secrets
         run: |
@@ -145,7 +145,7 @@ jobs:
             Spotube-iOS.ipa
 
       - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'nightly' }}
+        if: ${{ failure() && inputs.debug && inputs.channel == 'relaese' }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
@@ -180,8 +180,8 @@ jobs:
             RELEASE.md5sum
             RELEASE.sha256sum
 
-      - name: Upload Release Binaries (stable)
-        if: ${{ !inputs.dry_run && inputs.channel == 'stable' }}
+      - name: Upload Release Binaries (debug)
+        if: ${{ !inputs.dry_run && inputs.channel == 'debug' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -192,12 +192,12 @@ jobs:
           allowUpdates: true
           artifacts: Spotube-Release-Binaries/*,RELEASE.sha256sum,RELEASE.md5sum
 
-      - name: Upload Release Binaries (nightly)
-        if: ${{ !inputs.dry_run && inputs.channel == 'nightly' }}
+      - name: Upload Release Binaries (relaese)
+        if: ${{ !inputs.dry_run && inputs.channel == 'relaese' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: nightly
+          tag: relaese
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true
