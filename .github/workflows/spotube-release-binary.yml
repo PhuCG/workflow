@@ -12,10 +12,10 @@ on:
         required: true
         options:
           - debug
-          - relaese
-        default: relaese
+          - release
+        default: release
       debug:
-        description: Debug on failed when channel is relaese
+        description: Debug on failed when channel is release
         required: true
         type: boolean
         default: false
@@ -40,8 +40,8 @@ jobs:
           cache: true
           flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (relaese)
-        if: ${{ inputs.channel == 'relaese' }}
+      - name: Replace pubspec version and BUILD_VERSION Env (release)
+        if: ${{ inputs.channel == 'release' }}
         run: |
           brew install yq
           yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
@@ -57,9 +57,9 @@ jobs:
         if: ${{ inputs.channel == 'debug' }}
         run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create relaese .env
-        if: ${{ inputs.channel == 'relaese' }}
-        run: echo '${{ secrets.DOTENV_relaese }}' > .env
+      - name: Create release .env
+        if: ${{ inputs.channel == 'release' }}
+        run: echo '${{ secrets.DOTENV_release }}' > .env
 
       - name: Generate Secrets
         run: |
@@ -91,7 +91,7 @@ jobs:
             build/Spotube-macos-universal.pkg
 
       - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'relaese' }}
+        if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
@@ -105,8 +105,8 @@ jobs:
           cache: true
           flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (relaese)
-        if: ${{ inputs.channel == 'relaese' }}
+      - name: Replace pubspec version and BUILD_VERSION Env (release)
+        if: ${{ inputs.channel == 'release' }}
         run: |
           brew install yq
           yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
@@ -122,9 +122,9 @@ jobs:
         if: ${{ inputs.channel == 'debug' }}
         run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create relaese .env
-        if: ${{ inputs.channel == 'relaese' }}
-        run: echo '${{ secrets.DOTENV_relaese }}' > .env
+      - name: Create release .env
+        if: ${{ inputs.channel == 'release' }}
+        run: echo '${{ secrets.DOTENV_release }}' > .env
 
       - name: Generate Secrets
         run: |
@@ -145,7 +145,7 @@ jobs:
             Spotube-iOS.ipa
 
       - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'relaese' }}
+        if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
@@ -192,12 +192,12 @@ jobs:
           allowUpdates: true
           artifacts: Spotube-Release-Binaries/*,RELEASE.sha256sum,RELEASE.md5sum
 
-      - name: Upload Release Binaries (relaese)
-        if: ${{ !inputs.dry_run && inputs.channel == 'relaese' }}
+      - name: Upload Release Binaries (release)
+        if: ${{ !inputs.dry_run && inputs.channel == 'release' }}
         uses: ncipollo/release-action@v1
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          tag: relaese
+          tag: release
           omitBodyDuringUpdate: true
           omitNameDuringUpdate: true
           omitPrereleaseDuringUpdate: true
