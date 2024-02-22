@@ -133,7 +133,7 @@ jobs:
 
       - name: Build iOS iPA
         run: |
-          flutter build ios --release --no-codesign --flavor ${{ inputs.channel }}  
+          flutter build ios --release --no-codesign
           ln -sf ./build/ios/iphoneos Payload
           zip -r9 Spotube-iOS.ipa Payload/${{ inputs.channel }}.app
 
