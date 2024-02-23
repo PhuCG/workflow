@@ -80,6 +80,9 @@ jobs:
           flutter_distributor package --platform=windows --targets=exe --skip-clean
           mv dist/**/spotube-*-windows-setup.exe dist/Spotube-windows-x86_64-setup.exe
 
+      - name: List contents of the dist directory
+        run: ls -R dist
+      
       - name: Create Chocolatey Package and set hash
         if: ${{ inputs.channel == 'debug' }}
         run: |
@@ -95,79 +98,80 @@ jobs:
           if-no-files-found: error
           name: Spotube-Release-Binaries
           path: |
-            dist/Spotube-windows-x86_64.nupkg
-            dist/Spotube-windows-x86_64-setup.exe
+            dist/*.nupkg
+            dist/*.exe
 
       - name: Debug With SSH When fails
         if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
         uses: mxschmitt/action-tmate@v3
         with:
           limit-access-to-actor: true
-  macos:
+  
+  # macos:
 
-    runs-on: macos-12
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.12.0
-        with:
-          cache: true
-          flutter-version: ${{ env.FLUTTER_VERSION  }}
+  #   runs-on: macos-12
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: subosito/flutter-action@v2.12.0
+  #       with:
+  #         cache: true
+  #         flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (release)
-        if: ${{ inputs.channel == 'release' }}
-        run: |
-          brew install yq
-          yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
-          yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
-          echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
+  #     - name: Replace pubspec version and BUILD_VERSION Env (release)
+  #       if: ${{ inputs.channel == 'release' }}
+  #       run: |
+  #         brew install yq
+  #         yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
+  #         yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
+  #         echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
 
-      - name: BUILD_VERSION Env (debug)
-        if: ${{ inputs.channel == 'debug' }}
-        run: |
-          echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+  #     - name: BUILD_VERSION Env (debug)
+  #       if: ${{ inputs.channel == 'debug' }}
+  #       run: |
+  #         echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
-      - name: Create debug .env
-        if: ${{ inputs.channel == 'debug' }}
-        run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
+  #     - name: Create debug .env
+  #       if: ${{ inputs.channel == 'debug' }}
+  #       run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create release .env
-        if: ${{ inputs.channel == 'release' }}
-        run: echo '${{ secrets.DOTENV_release }}' > .env
+  #     - name: Create release .env
+  #       if: ${{ inputs.channel == 'release' }}
+  #       run: echo '${{ secrets.DOTENV_release }}' > .env
 
-      - name: Generate Secrets
-        run: |
-          dart pub global activate flutter_distributor
-          flutter pub get
-          dart run build_runner build --delete-conflicting-outputs --enable-experiment=records,patterns
+  #     - name: Generate Secrets
+  #       run: |
+  #         dart pub global activate flutter_distributor
+  #         flutter pub get
+  #         dart run build_runner build --delete-conflicting-outputs --enable-experiment=records,patterns
 
-      - name: Build Macos App
-        run: |
-          flutter config --enable-macos-desktop
-          flutter build macos
-          du -sh build/macos/Build/Products/Release/spotube.app
+  #     - name: Build Macos App
+  #       run: |
+  #         flutter config --enable-macos-desktop
+  #         flutter build macos
+  #         du -sh build/macos/Build/Products/Release/spotube.app
 
-      - name: Package Macos App
-        run: |
-          python3 -m pip install setuptools
-          npm install -g appdmg
-          mkdir -p build/${{ env.BUILD_VERSION }}
-          appdmg appdmg.json build/Spotube-macos-universal.dmg
-          flutter_distributor package --platform=macos --targets pkg --skip-clean
-          mv dist/**/spotube-*-macos.pkg build/Spotube-macos-universal.pkg
+  #     - name: Package Macos App
+  #       run: |
+  #         python3 -m pip install setuptools
+  #         npm install -g appdmg
+  #         mkdir -p build/${{ env.BUILD_VERSION }}
+  #         appdmg appdmg.json build/Spotube-macos-universal.dmg
+  #         flutter_distributor package --platform=macos --targets pkg --skip-clean
+  #         mv dist/**/spotube-*-macos.pkg build/Spotube-macos-universal.pkg
 
-      - uses: actions/upload-artifact@v3
-        with:
-          if-no-files-found: error
-          name: Spotube-Release-Binaries
-          path: |
-            build/Spotube-macos-universal.dmg
-            build/Spotube-macos-universal.pkg
+  #     - uses: actions/upload-artifact@v3
+  #       with:
+  #         if-no-files-found: error
+  #         name: Spotube-Release-Binaries
+  #         path: |
+  #           build/Spotube-macos-universal.dmg
+  #           build/Spotube-macos-universal.pkg
 
-      - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+  #     - name: Debug With SSH When fails
+  #       if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
+  #       uses: mxschmitt/action-tmate@v3
+  #       with:
+  #         limit-access-to-actor: true
 
   # iOS:
   #   runs-on: macos-latest
@@ -228,7 +232,7 @@ jobs:
     runs-on: ubuntu-latest
 
     needs:
-      - macos
+      # - macos
       - windows
       # - iOS
     steps:
