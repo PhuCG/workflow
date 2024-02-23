@@ -30,6 +30,79 @@ env:
 
 jobs:
 
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2.12.0
+        with:
+          cache: true
+          flutter-version: ${{ env.FLUTTER_VERSION  }}
+
+      - name: Replace pubspec version and BUILD_VERSION Env (release)
+        if: ${{ inputs.channel == 'release' }}
+        run: |
+          choco install sed make yq -y
+          yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
+          yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
+          "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel }}.${{ github.run_number }}" >> $env:GITHUB_ENV
+
+      - name: BUILD_VERSION Env (debug)
+        if: ${{ inputs.channel == 'debug' }}
+        run: |
+          "BUILD_VERSION=${{ inputs.version }}" >> $env:GITHUB_ENV
+
+      - name: Replace version in files
+        run: |
+          choco install sed make -y
+          sed -i "s/%{{SPOTUBE_VERSION}}%/${{ env.BUILD_VERSION }}/" windows/runner/Runner.rc
+          sed -i "s/%{{SPOTUBE_VERSION}}%/${{ env.BUILD_VERSION }}/" choco-struct/tools/VERIFICATION.txt
+          sed -i "s/%{{SPOTUBE_VERSION}}%/${{ env.BUILD_VERSION }}/" choco-struct/spotube.nuspec
+
+      - name: Create debug .env
+        if: ${{ inputs.channel == 'debug' }}
+        run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
+
+      - name: Create release .env
+        if: ${{ inputs.channel == 'release' }}
+        run: echo '${{ secrets.DOTENV_release }}' > .env
+
+      - name: Generating Secrets
+        run: |
+          flutter config --enable-windows-desktop
+          flutter pub get
+          dart run build_runner build --delete-conflicting-outputs --enable-experiment=records,patterns
+
+      - name: Build Windows Executable
+        run: |
+          dart pub global activate flutter_distributor
+          make innoinstall
+          flutter_distributor package --platform=windows --targets=exe --skip-clean
+          mv dist/**/spotube-*-windows-setup.exe dist/Spotube-windows-x86_64-setup.exe
+
+      - name: Create Chocolatey Package and set hash
+        if: ${{ inputs.channel == 'debug' }}
+        run: |
+          Set-Variable -Name HASH -Value (Get-FileHash dist\Spotube-windows-x86_64-setup.exe).Hash
+          sed -i "s/%{{WIN_SHA256}}%/$HASH/" choco-struct/tools/VERIFICATION.txt
+          make choco
+          mv dist/spotube.*.nupkg dist/Spotube-windows-x86_64.nupkg
+
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
+        with:
+          if-no-files-found: error
+          name: Spotube-Release-Binaries
+          path: |
+            dist/Spotube-windows-x86_64.nupkg
+            dist/Spotube-windows-x86_64-setup.exe
+
+      - name: Debug With SSH When fails
+        if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
+        uses: mxschmitt/action-tmate@v3
+        with:
+          limit-access-to-actor: true
   macos:
 
     runs-on: macos-12
@@ -96,67 +169,68 @@ jobs:
         with:
           limit-access-to-actor: true
 
-  iOS:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: subosito/flutter-action@v2.10.0
-        with:
-          cache: true
-          flutter-version: ${{ env.FLUTTER_VERSION  }}
+  # iOS:
+  #   runs-on: macos-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: subosito/flutter-action@v2.10.0
+  #       with:
+  #         cache: true
+  #         flutter-version: ${{ env.FLUTTER_VERSION  }}
 
-      - name: Replace pubspec version and BUILD_VERSION Env (release)
-        if: ${{ inputs.channel == 'release' }}
-        run: |
-          brew install yq
-          yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
-          yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
-          echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
+  #     - name: Replace pubspec version and BUILD_VERSION Env (release)
+  #       if: ${{ inputs.channel == 'release' }}
+  #       run: |
+  #         brew install yq
+  #         yq -i '.version |= sub("\+\d+", "+${{ inputs.channel }}.")' pubspec.yaml
+  #         yq -i '.version += strenv(GITHUB_RUN_NUMBER)' pubspec.yaml
+  #         echo "BUILD_VERSION=${{ inputs.version }}+${{ inputs.channel  }}.${{ github.run_number }}" >> $GITHUB_ENV
 
-      - name: BUILD_VERSION Env (debug)
-        if: ${{ inputs.channel == 'debug' }}
-        run: |
-          echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
+  #     - name: BUILD_VERSION Env (debug)
+  #       if: ${{ inputs.channel == 'debug' }}
+  #       run: |
+  #         echo "BUILD_VERSION=${{ inputs.version }}" >> $GITHUB_ENV
 
-      - name: Create debug .env
-        if: ${{ inputs.channel == 'debug' }}
-        run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
+  #     - name: Create debug .env
+  #       if: ${{ inputs.channel == 'debug' }}
+  #       run: echo '${{ secrets.DOTENV_RELEASE }}' > .env
 
-      - name: Create release .env
-        if: ${{ inputs.channel == 'release' }}
-        run: echo '${{ secrets.DOTENV_release }}' > .env
+  #     - name: Create release .env
+  #       if: ${{ inputs.channel == 'release' }}
+  #       run: echo '${{ secrets.DOTENV_release }}' > .env
 
-      - name: Generate Secrets
-        run: |
-          flutter pub get
-          dart run build_runner build --delete-conflicting-outputs --enable-experiment=records,patterns
+  #     - name: Generate Secrets
+  #       run: |
+  #         flutter pub get
+  #         dart run build_runner build --delete-conflicting-outputs --enable-experiment=records,patterns
 
-      - name: Build iOS iPA
-        run: |
-          flutter build ios --release --no-codesign
-          mkdir -p Payload
-          ln -s "$PWD/build/ios/iphoneos/Runner.app" Payload/
-          zip -r9 Spotube-iOS.ipa Payload
+  #     - name: Build iOS iPA
+  #       run: |
+  #         flutter build ios --release --no-codesign
+  #         mkdir -p Payload
+  #         ln -s "$PWD/build/ios/iphoneos/Runner.app" Payload/
+  #         zip -r9 Spotube-iOS.ipa Payload
 
-      - uses: actions/upload-artifact@v3
-        with:
-          if-no-files-found: error
-          name: Spotube-Release-Binaries
-          path: |
-            Spotube-iOS.ipa
+  #     - uses: actions/upload-artifact@v3
+  #       with:
+  #         if-no-files-found: error
+  #         name: Spotube-Release-Binaries
+  #         path: |
+  #           Spotube-iOS.ipa
 
-      - name: Debug With SSH When fails
-        if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
-        uses: mxschmitt/action-tmate@v3
-        with:
-          limit-access-to-actor: true
+  #     - name: Debug With SSH When fails
+  #       if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
+  #       uses: mxschmitt/action-tmate@v3
+  #       with:
+  #         limit-access-to-actor: true
           
   upload:
     runs-on: ubuntu-latest
 
     needs:
       - macos
-      - iOS
+      - windows
+      # - iOS
     steps:
       - uses: actions/download-artifact@v3
         with:
