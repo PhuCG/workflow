@@ -78,6 +78,7 @@ jobs:
           dart pub global activate flutter_distributor
           make innoinstall
           flutter_distributor package --platform=windows --targets=exe --skip-clean
+          ls -R dist
           mv dist/**/spotube-*-windows-setup.exe dist/Spotube-windows-x86_64-setup.exe
 
       - name: List contents of the dist directory
@@ -98,8 +99,8 @@ jobs:
           if-no-files-found: error
           name: Spotube-Release-Binaries
           path: |
-            dist/*.nupkg
-            dist/*.exe
+            dist/Spotube-windows-x86_64.nupkg
+            dist/Spotube-windows-x86_64-setup.exe
 
       - name: Debug With SSH When fails
         if: ${{ failure() && inputs.debug && inputs.channel == 'release' }}
