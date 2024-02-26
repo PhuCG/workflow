@@ -37,6 +37,7 @@ dependencies:
   cupertino_icons: ^1.0.6
   build_runner: ^2.4.8
   flutter_distributor: ^0.3.7
+  msix: ^3.16.7
 
 dev_dependencies:
   flutter_test:
@@ -90,3 +91,6 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/custom-fonts/#from-packages
+
+msix_config:
+  display_name: Workflow
